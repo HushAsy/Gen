@@ -10,6 +10,7 @@ import org.hhs.gen.domain.QrCodeInfo;
 import org.hhs.gen.utils.QrCodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -22,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
+@Service
 public class GeneratorImageService {
     private Logger logger = LoggerFactory.getLogger(GeneratorImageService.class);
     private static final int QRCOLOR = 0xFF000000;   //默认是黑色
@@ -34,7 +35,10 @@ public class GeneratorImageService {
         List<QrCodeInfo> lists = new ArrayList<QrCodeInfo>();
         QrCodeInfo qrCodeInfo = null;
         try {
-            while((temp = reader.readLine())!=null && !temp.equals("")){
+            while((temp = reader.readLine())!=null ){
+                if(temp.trim().length() == 0){
+                    continue;
+                }
                 String[] strings = temp.trim().split("\\s+");
                 qrCodeInfo = new QrCodeInfo();
                 qrCodeInfo.setContent(strings[0]);
@@ -102,8 +106,9 @@ public class GeneratorImageService {
     //获得二维码+编号的图片
     public BufferedImage generatorQrCode(String content, String productName){
         try{
-            int width = QrCodeProperties.getQcWidth();
-            int height = QrCodeProperties.getQcHigh();
+            try {
+                int width = QrCodeProperties.getQcWidth();
+                int height = QrCodeProperties.getQcHigh();
             /**
              * 读取二维码图片，并构建绘图对象
              */
@@ -114,13 +119,14 @@ public class GeneratorImageService {
             //把编号添加上去，这里最多支持两行。太长就会自动截取啦
             if (productName != null && !productName.equals("")) {
                 //新的图片，把带logo的二维码下面加上文字
-                BufferedImage outImage = new BufferedImage(width, height+25, BufferedImage.TYPE_4BYTE_ABGR);
+//                BufferedImage outImage = new BufferedImage(width, height+25, BufferedImage.TYPE_4BYTE_ABGR);
+                BufferedImage outImage = new BufferedImage(width+10, height+10, BufferedImage.TYPE_4BYTE_ABGR);
                 Graphics2D outg = outImage.createGraphics();
                 //画二维码到新的面板
-                outg.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
+                outg.drawImage(image, 5, 3, image.getWidth(), image.getHeight(), null);
                 //画文字到新的面板
                 outg.setColor(Color.BLACK);
-                Font font = new Font("宋体",Font.BOLD,28);
+                Font font = new Font("宋体",Font.BOLD,16);
                 outg.setFont(font); //字体、字型、字号
                 int strWidth = outg.getFontMetrics().stringWidth(productName);
                 if (strWidth > (width-1)) {
@@ -130,7 +136,7 @@ public class GeneratorImageService {
                     int strWidth1 = outg.getFontMetrics().stringWidth(productName1);
                     int strWidth2 = outg.getFontMetrics().stringWidth(productName2);
                     outg.drawString(productName1, width/2  - strWidth1/2, image.getHeight() + (outImage.getHeight() - image.getHeight())/2 + 12 );
-                    BufferedImage outImage2 = new BufferedImage(200, 270, BufferedImage.TYPE_4BYTE_ABGR);
+                    BufferedImage outImage2 = new BufferedImage(130, 133, BufferedImage.TYPE_4BYTE_ABGR);
                     Graphics2D outg2 = outImage2.createGraphics();
                     outg2.drawImage(outImage, 0, 0, outImage.getWidth(), outImage.getHeight(), null);
                     outg2.setColor(Color.BLACK);
@@ -140,7 +146,7 @@ public class GeneratorImageService {
                     outImage2.flush();
                     outImage = outImage2;
                 }else {
-                    outg.drawString(productName, width/2  - strWidth/2 , image.getHeight() + (outImage.getHeight() - image.getHeight())/2 + 5 ); //画文字
+                    outg.drawString(productName, outImage.getWidth()/2  - strWidth/2 , 3+image.getHeight()+7); //画文字
                 }
                 outg.dispose();
                 outImage.flush();
@@ -152,28 +158,18 @@ public class GeneratorImageService {
         catch (Exception e){
             e.printStackTrace();
         }
+        }catch (Exception e){
+            logger.error("error", e);
+        }
         return null;
     }
 
     public void generatorOne(List<QrCodeInfo> infos, String fileName, String threadName){
         List<BufferedImage> lists = getBufferedImages(infos);
-        BufferedImage resultImage = new BufferedImage(2683, 847*2, BufferedImage.TYPE_4BYTE_ABGR);
-        Graphics2D resultG = resultImage.createGraphics();
-
-        BufferedImage bufferedImage = null;
-        for(int i = 0; i < lists.size(); i++){
-            bufferedImage = lists.get(i);
-            if(i < 5){
-                resultG.drawImage(bufferedImage, 168+i*277+250*i, 130, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
-            }else{
-                resultG.drawImage(bufferedImage, 168+(i-5)*277+250*(i-5), 1025, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
-            }
-        }
-        resultG.dispose();
-        resultImage.flush();
-        String rootDir = QrCodeProperties.getFileRoot()+File.pathSeparator+"image"+File.pathSeparator+threadName;
+        BufferedImage resultImage = getGeneraImage1(lists);
+        String rootDir = QrCodeProperties.getFileRoot()+File.separator+"image"+File.separator+threadName;
         File rootFile = new File(rootDir);
-        if(rootFile.exists()){
+        if(!rootFile.exists()){
             rootFile.mkdirs();
         }
         File file = new File(rootDir,fileName);
@@ -192,6 +188,48 @@ public class GeneratorImageService {
         }
     }
 
+    private BufferedImage getGeneraImage(List<BufferedImage> lists){
+        BufferedImage resultImage = new BufferedImage(2683, 847*2, BufferedImage.TYPE_4BYTE_ABGR);
+        Graphics2D resultG = resultImage.createGraphics();
+
+        BufferedImage bufferedImage = null;
+        for(int i = 0; i < lists.size(); i++){
+            bufferedImage = lists.get(i);
+            if(i < 5){
+                resultG.drawImage(bufferedImage, 168+i*277+250*i, 130, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
+            }else{
+                resultG.drawImage(bufferedImage, 168+(i-5)*277+250*(i-5), 1025, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
+            }
+        }
+        resultG.dispose();
+        resultImage.flush();
+        return resultImage;
+    }
+
+    /**
+     * 一行5个共6行
+     * @param lists
+     * @return
+     */
+    private BufferedImage getGeneraImage1(List<BufferedImage> lists){
+        BufferedImage resultImage = new BufferedImage(2500, 1800, BufferedImage.TYPE_4BYTE_ABGR);
+        Graphics2D resultG = resultImage.createGraphics();
+
+        BufferedImage bufferedImage = null;
+        for(int i = 0; i < lists.size(); i++){
+            bufferedImage = lists.get(i);
+//            if(i < 5){
+//                resultG.drawImage(bufferedImage, 168+i*277+250*i, 130, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
+//            }else{
+//                resultG.drawImage(bufferedImage, 168+(i-5)*277+250*(i-5), 1025, bufferedImage.getWidth(), bufferedImage.getHeight(), null);
+//            }
+            resultG.drawImage(bufferedImage, 335+i%5*498,80+i/5*300,bufferedImage.getWidth(), bufferedImage.getHeight(), null);
+
+        }
+        resultG.dispose();
+        resultImage.flush();
+        return resultImage;
+    }
 
 
     public List<BufferedImage> getBufferedImages(List<QrCodeInfo> infos){

@@ -14,8 +14,8 @@ public class QrCodeProperties {
     private static Properties p = null;
     static {
         if(p == null){
-            synchronized (p){
-                if(p == null){
+            synchronized (QrCodeProperties.class) {
+                if(p == null) {
                     loadProperties();
                 }
             }
@@ -54,7 +54,7 @@ public class QrCodeProperties {
     public static int getQcHigh(){
         String high = p.getProperty("high");
         if("".equals(high)||high == null){
-            return 200;
+            return 130;
         }else {
             return Integer.valueOf(high);
         }
@@ -63,7 +63,7 @@ public class QrCodeProperties {
     public static int getQcWidth(){
         String width = p.getProperty("width");
         if("".equals(width)||width == null){
-            return 200;
+            return 130;
         }else {
             return Integer.valueOf(width);
         }

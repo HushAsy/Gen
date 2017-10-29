@@ -181,9 +181,9 @@ public class GenerateQrCode {
         return hints;
     }
 
-    public static void main(String...args) throws FileNotFoundException, InterruptedException {
-        QrController qrController = new QrController();
-        File file = new File("D:\\ali\\erweima.txt");
-        qrController.mainGen(new InputStreamReader(new FileInputStream(file)));
-    }
+//    public static void main(String...args) throws FileNotFoundException, InterruptedException {
+//        QrController qrController = new QrController();
+//        File file = new File("D:\\2017\\erweima1.txt");
+//        qrController.mainGen(new InputStreamReader(new FileInputStream(file)));
+//    }
 }
